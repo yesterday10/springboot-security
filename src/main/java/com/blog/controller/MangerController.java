@@ -72,7 +72,7 @@ public class MangerController {
 
     /**
      * 上传文件
-     * @param file  文件456456
+     * @param file  文件456456git qqq
      * @return
      */
     @RequestMapping("/sys/upload")

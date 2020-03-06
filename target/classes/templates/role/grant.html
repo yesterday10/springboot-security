@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>授权窗口</title>
+    <link rel="stylesheet" href="/css/metroStyle/metroStyle.css">
+    <link rel="stylesheet" href="/webjars/layui/css/layui.css">
+    <link rel="stylesheet" href="/css/public.css">
+</head>
+<body>
+<div class="row">
+    <input type="hidden" id="menus" th:value="${menuList}">
+    <div class="row" th:style="${#strings.equals(type,'2')?'height:406px;overflow-y: auto;overflow-x: hidden;':''}+'padding-left: 60px'">
+        <div class="zTreeDemoBackground left">
+            <ul id="menuTree" class="ztree"></ul>
+        </div>
+    </div>
+    <div class="search-row" style="text-align: center" th:if="${#strings.equals(type,'2')}">
+        <button type="button" th:attr="data-id=${roleId}" class="layui-btn save">保存</button>
+        <button type="button" class="layui-btn cancel">取消</button>
+    </div>
+</div>
+<script src="/webjars/layui/layui.js"></script>
+<script src="/webjars/jquery/3.3.1-1/jquery.min.js"></script>
+<script src="/js/jquery.ztree.all.min.js"></script>
+<script type="text/javascript">
+    var zNodes =JSON.parse($('#menus').val());
+    var setting = {
+        view: {
+            selectedMulti: false
+        },
+        check: {
+            enable: true,
+            chkboxType: { "Y": "p", "N": "s" }
+        },
+    };
+    layui.use(['element','layer'], function(){
+        $ = layui.jquery;
+        var layer = layui.layer;
+
+        $.fn.zTree.init($("#menuTree"), setting, zNodes);
+        var treeObj=$.fn.zTree.getZTreeObj("menuTree");
+        treeObj.expandAll(true);
+        $("button.save").on('click', function () {
+            var roleId = $(this).data('id');
+            var nodes = treeObj.getCheckedNodes(true);
+            var checkNodes="";
+            for(var i=0;i<nodes.length;i++){
+//                if(!nodes[i].getCheckStatus().half){
+                checkNodes += nodes[i].id+",";
+//                }
+            }
+            $.post('/sys/saveGrant',{'[[${_csrf.parameterName}]]':'[[${_csrf.token}]]',roleId: roleId , menuIds: checkNodes},function (data) {
+                if(data.code == 200){
+                    layer.msg(data.msg, {icon: 1,time:600}, function () {
+                        var index = parent.layer.getFrameIndex(window.name); //获取窗口索引
+                        parent.location.reload();
+                        parent.layer.close(index);
+                    });
+                }else{
+                    layer.msg(data.msg,{icon: 2,time:600});
+                }
+            })
+        });
+        $("button.cancel").on('click', function () {
+            var index = parent.layer.getFrameIndex(window.name); //获取窗口索引
+            parent.layer.close(index);
+        });
+    });
+</script>
+</body>
+</html>

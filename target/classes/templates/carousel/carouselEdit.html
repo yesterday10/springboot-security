@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>轮播图编辑页</title>
+    <link rel="stylesheet" href="/webjars/layui/css/layui.css">
+    <link rel="stylesheet" href="/css/public.css">
+</head>
+<body class="child-body">
+<div class="child-nav">
+    <span class="layui-breadcrumb">
+         <a>音书管理</a>
+         <a href="/ms/carousel">轮播图</a>
+        <a><cite th:text="${#strings.equals(carouselCategory.id,null)?'新增轮播图':'修改轮播图'}"></cite></a>
+    </span>
+    <a class="layui-btn layui-btn-sm" href="javascript:location.replace(location.href);" title="刷新" style="float:right;margin-top: 3px"><i class="layui-icon layui-icon-refresh-3"></i></a>
+</div>
+
+<div class="layui-row">
+    <form class="layui-form" action="/ms/saveCarousel" method="post">
+        <div class="layui-form-item">
+            <label class="layui-form-label">标识符</label>
+            <div class="layui-input-inline">
+                <input type="text" id="cid" name="id" th:value="${carouselCategory.id}" readonly="readonly" required lay-verify="required" placeholder="请输入唯一标识符" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">标题</label>
+            <div class="layui-input-inline">
+                <input type="text" name="title" th:value="${carouselCategory.title}" required  lay-verify="required" placeholder="请输入标题" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">描述</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" th:value="${carouselCategory.remark}" placeholder="描述内容" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <button type="button" class="layui-btn" id="clg"><i class="layui-icon">&#xe681;</i>添加图片</button>
+        <table class="layui-table" id="ig" lay-skin="line">
+            <thead>
+            <tr>
+                <th>排序</th>
+                <th>图片</th>
+                <th>图片提示</th>
+                <th>跳转地址</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:data-row="${carouselStat.index}" th:each="carousel,carouselStat:${carouselCategory.carousels}">
+                <input type="hidden" th:name="'carousels['+${carouselStat.index}+'].id'" th:value="${carousel.id}">
+                <td width="75"><input type="number" class="layui-input" lay-verify="sort" lay-vertype="tips" th:name="'carousels['+${carouselStat.index}+'].sort'" th:value="${carousel.sort}"></td>
+                <td><img th:src="${carousel.imageUrl}" th:alt="${carousel.imageTip}"><input type="hidden" th:name="'carousels['+${carouselStat.index}+'].imageUrl'" th:value="${carousel.imageUrl}"></td>
+                <td><input type="text" class="layui-input" th:name="'carousels['+${carouselStat.index}+'].imageTip'" th:value="${carousel.imageTip}"></td>
+                <td><input type="text" class="layui-input" th:name="'carousels['+${carouselStat.index}+'].forwardUrl'" th:value="${carousel.forwardUrl}"></td>
+                <td>
+                    <a sec:authorize="hasAuthority('sel:del')" class="layui-btn layui-btn-danger layui-btn-xs remove" th:attr="data-id=${carousel.id},data-url=${carousel.imageUrl}" href="javascript:void(0);"><i class="layui-icon">&#xe640;</i>删除</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <div class="layui-form-item">
+            <div class="layui-input-block">
+                <button class="layui-btn" lay-submit lay-filter="save" th:text="${#strings.equals(carouselCategory.id,null)?'保存':'修改'}"></button>
+                <a href="javascript:history.back()" type="button" class="layui-btn layui-btn-primary">返回</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script src="/webjars/layui/layui.js"></script>
+<script type="text/javascript">
+    layui.use(['element','form','upload'], function(){
+        $ = layui.jquery;
+        var form = layui.form,
+            upload = layui.upload;
+
+        //上传文件
+        upload.render({
+            elem: '#clg'
+            ,url: '/ms/addCarousel'
+            ,size: 600 //限制文件大小，单位 KB
+            ,accept: 'images' //普通文件
+            ,exts: 'jpg|jpeg|png' //只允许上传图片
+            ,acceptMime:'image/*'
+            ,data:{"[[${_csrf.parameterName}]]": "[[${_csrf.token}]]","id":$('#cid').val()}
+            ,done: function(res){
+                if(res.code == 200){
+                    location.reload();
+                }else{
+                    return layer.msg('上传失败');
+                }
+            }
+        });
+
+        //监听提交
+        form.on('submit(save)', function(data){
+            var headers = {};
+            headers['X-CSRF-TOKEN'] = "[[${_csrf.token}]]";
+            $.ajax({
+                url:data.form.action,
+                type:data.form.method,
+                headers: headers,
+                data:data.field,
+                dataType:'json',
+                beforeSend:function() {
+                    $("#save").attr("disabled","true");
+                },
+                success:function(result){
+                    if(result.code == 200){
+                        layer.msg(result.msg, {icon: 1,time:600}, function () {
+                            location.href="/ms/carousel";
+                        });
+                    }else{
+                        layer.msg(result.msg,{time:1000});
+                    }
+                }
+            });
+            return false;
+        });
+
+        //删除处理
+        $(".remove").on('click', function () {
+            var _this = $(this);
+            layer.confirm('确定删除吗?',{title:'删除'}, function(){
+                $.getJSON('/ms/carouselDel', {id:_this.data('id'),url:_this.data('url')}, function(ret){
+                    if (ret.code == 200){
+                        layer.msg(ret.msg, {icon: 1,time:600},function () {
+                            location.reload();
+                        });
+                    } else {
+                        layer.msg(ret.msg, {icon: 2,time:600});
+                    }
+                });
+            });
+        })
+
+    });
+</script>
+</body>
+</html>
